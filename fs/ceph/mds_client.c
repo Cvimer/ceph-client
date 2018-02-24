@@ -180,7 +180,7 @@ static int parse_reply_info_trace(void **p, void *end,
 bad:
 	err = -EIO;
 out_bad:
-	pr_err("problem parsing mds trace %d\n", err);
+	pr_err("%s: problem parsing mds trace %d\n", __func__, err);
 	return err;
 }
 
@@ -217,7 +217,7 @@ static int parse_reply_info_dir(void **p, void *end,
 	BUG_ON(!info->dir_entries);
 	if ((unsigned long)(info->dir_entries + num) >
 	    (unsigned long)info->dir_entries + info->dir_buf_size) {
-		pr_err("dir contents are larger than expected\n");
+		pr_err("%s: dir contents are larger than expected\n", __func__);
 		WARN_ON(1);
 		goto bad;
 	}
@@ -253,7 +253,7 @@ done:
 bad:
 	err = -EIO;
 out_bad:
-	pr_err("problem parsing dir contents %d\n", err);
+	pr_err("%s: problem parsing dir contents %d\n", __func__, err);
 	return err;
 }
 
@@ -367,7 +367,7 @@ static int parse_reply_info(struct ceph_msg *msg,
 bad:
 	err = -EIO;
 out_bad:
-	pr_err("mds parse_reply err %d\n", err);
+	pr_err("%s: mds parse_reply err %d\n", __func__, err);
 	return err;
 }
 
@@ -631,8 +631,8 @@ static void __register_request(struct ceph_mds_client *mdsc,
 		ret = ceph_reserve_caps(mdsc, &req->r_caps_reservation,
 					req->r_num_caps);
 		if (ret < 0) {
-			pr_err("__register_request %p "
-			       "failed to reserve caps: %d\n", req, ret);
+			pr_err("%s: %p failed to reserve caps: %d\n",
+				__func__, req, ret);
 			/* set req->r_err to fail early from __do_request */
 			req->r_err = ret;
 			return;
@@ -889,7 +889,7 @@ static struct ceph_msg *create_session_msg(u32 op, u64 seq)
 	msg = ceph_msg_new(CEPH_MSG_CLIENT_SESSION, sizeof(*h), GFP_NOFS,
 			   false);
 	if (!msg) {
-		pr_err("create_session_msg ENOMEM creating msg\n");
+		pr_err("%s: ENOMEM creating msg\n", __func__);
 		return NULL;
 	}
 	h = msg->front.iov_base;
@@ -934,7 +934,7 @@ static struct ceph_msg *create_session_open_msg(struct ceph_mds_client *mdsc, u6
 	msg = ceph_msg_new(CEPH_MSG_CLIENT_SESSION, sizeof(*h) + metadata_bytes,
 			   GFP_NOFS, false);
 	if (!msg) {
-		pr_err("create_session_msg ENOMEM creating msg\n");
+		pr_err("%s: ENOMEM creating msg\n", __func__);
 		return NULL;
 	}
 	h = msg->front.iov_base;
@@ -1720,8 +1720,8 @@ again:
 	}
 	return;
 out_err:
-	pr_err("send_cap_releases mds%d, failed to allocate message\n",
-		session->s_mds);
+	pr_err("%s mds%d, failed to allocate message\n",
+		__func__, session->s_mds);
 	spin_lock(&session->s_cap_lock);
 	list_splice(&tmp_list, &session->s_cap_releases);
 	session->s_num_cap_releases += num_cap_releases;
@@ -1893,8 +1893,9 @@ retry:
 	}
 	rcu_read_unlock();
 	if (pos != 0 || read_seqretry(&rename_lock, seq)) {
-		pr_err("build_path did not end path lookup where "
-		       "expected, namelen is %d, pos is %d\n", len, pos);
+		pr_err("%s: did not end path lookup where "
+		       "expected, namelen is %d, pos is %d\n",
+			__func__, len, pos);
 		/* presumably this is only possible if racing with a
 		   rename of one of the parent directories (we can not
 		   lock the dentries above us to prevent this, but
@@ -2501,7 +2502,7 @@ static void handle_reply(struct ceph_mds_session *session, struct ceph_msg *msg)
 	int mds = session->s_mds;
 
 	if (msg->front.iov_len < sizeof(*head)) {
-		pr_err("mdsc_handle_reply got corrupt (short) reply\n");
+		pr_err("%s: got corrupt (short) reply\n", __func__);
 		ceph_msg_dump(msg);
 		return;
 	}
@@ -2519,9 +2520,10 @@ static void handle_reply(struct ceph_mds_session *session, struct ceph_msg *msg)
 
 	/* correct session? */
 	if (req->r_session != session) {
-		pr_err("mdsc_handle_reply got %llu on session mds%d"
-		       " not mds%d\n", tid, session->s_mds,
-		       req->r_session ? req->r_session->s_mds : -1);
+		pr_err("%s: got %llu on session mds%d"
+			" not mds%d\n",
+			__func__, tid, session->s_mds,
+			req->r_session ? req->r_session->s_mds : -1);
 		mutex_unlock(&mdsc->mutex);
 		goto out;
 	}
@@ -2612,7 +2614,8 @@ static void handle_reply(struct ceph_mds_session *session, struct ceph_msg *msg)
 
 	mutex_lock(&session->s_mutex);
 	if (err < 0) {
-		pr_err("mdsc_handle_reply got corrupt reply mds%d(tid:%lld)\n", mds, tid);
+		pr_err("%s: got corrupt reply mds%d(tid:%lld)\n",
+			__func__, mds, tid);
 		ceph_msg_dump(msg);
 		goto out_err;
 	}
@@ -2728,7 +2731,7 @@ out:
 	return;
 
 bad:
-	pr_err("mdsc_handle_forward decode error err=%d\n", err);
+	pr_err("%s: decode error err=%d\n", __func__, err);
 }
 
 /*
@@ -2831,7 +2834,7 @@ static void handle_session(struct ceph_mds_session *session,
 		break;
 
 	default:
-		pr_err("mdsc_handle_session bad op %d mds%d\n", op, mds);
+		pr_err("%s: bad op %d mds%d\n", __func__, op, mds);
 		WARN_ON(1);
 	}
 
@@ -2848,7 +2851,7 @@ static void handle_session(struct ceph_mds_session *session,
 	return;
 
 bad:
-	pr_err("mdsc_handle_session corrupt message mds%d len %d\n", mds,
+	pr_err("%s: corrupt message mds%d len %d\n", __func__, mds,
 	       (int)msg->front.iov_len);
 	ceph_msg_dump(msg);
 	return;
@@ -3215,7 +3218,8 @@ fail:
 fail_nomsg:
 	ceph_pagelist_release(pagelist);
 fail_nopagelist:
-	pr_err("error %d preparing reconnect for mds%d\n", err, mds);
+	pr_err("%s: error %d preparing reconnect for mds%d\n",
+		__func__, err, mds);
 	return;
 }
 
@@ -3449,7 +3453,7 @@ out:
 	return;
 
 bad:
-	pr_err("corrupt lease message\n");
+	pr_err("%s: corrupt lease message\n", __func__);
 	ceph_msg_dump(msg);
 }
 
@@ -3965,7 +3969,7 @@ void ceph_mdsc_handle_fsmap(struct ceph_mds_client *mdsc, struct ceph_msg *msg)
 	return;
 
 bad:
-	pr_err("error decoding fsmap\n");
+	pr_err("%s: error decoding fsmap\n", __func__);
 err_out:
 	mutex_lock(&mdsc->mutex);
 	mdsc->mdsmap_err = err;
@@ -4031,7 +4035,7 @@ void ceph_mdsc_handle_mdsmap(struct ceph_mds_client *mdsc, struct ceph_msg *msg)
 bad_unlock:
 	mutex_unlock(&mdsc->mutex);
 bad:
-	pr_err("error decoding mdsmap %d\n", err);
+	pr_err("%s: error decoding mdsmap %d\n", __func__, err);
 	return;
 }
 
@@ -4111,8 +4115,9 @@ static void dispatch(struct ceph_connection *con, struct ceph_msg *msg)
 		break;
 
 	default:
-		pr_err("received unknown message type %d %s\n", type,
-		       ceph_msg_type_name(type));
+		pr_err("%s: received unknown message type %d %s\n",
+			__func__, type,
+			ceph_msg_type_name(type));
 	}
 out:
 	ceph_msg_put(msg);
@@ -4188,8 +4193,8 @@ static struct ceph_msg *mds_alloc_msg(struct ceph_connection *con,
 	*skip = 0;
 	msg = ceph_msg_new(type, front_len, GFP_NOFS, false);
 	if (!msg) {
-		pr_err("unable to allocate msg type %d len %d\n",
-		       type, front_len);
+		pr_err("%s: unable to allocate msg type %d len %d\n",
+			__func__, type, front_len);
 		return NULL;
 	}
 
